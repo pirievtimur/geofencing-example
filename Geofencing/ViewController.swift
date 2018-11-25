@@ -20,7 +20,7 @@ class ViewController: UIViewController {
     
     var monitoredRegions: [CLRegion] = [] {
         didSet {
-            guard isViewLoaded else { return }
+            guard isViewLoaded, tableView != nil else { return }
             tableView.reloadData()
         }
     }
@@ -38,10 +38,10 @@ class ViewController: UIViewController {
         // setup table view
         tableView.dataSource = self
         tableView.delegate = self
-        updateTableViewData()
+        updateVisibleData()
         
         // reload data
-        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .rewind, target: self, action: #selector(updateTableViewData))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(updateVisibleData))
         
         // add touch recognizer to map kit
         let longTapGesture = UILongPressGestureRecognizer(target: self, action: #selector(longpressGestureHandler))
@@ -81,7 +81,7 @@ class ViewController: UIViewController {
         region.notifyOnEntry = true
         
         locationManager.startMonitoring(for: region)
-        updateTableViewData()
+        updateVisibleData()
     }
     
     private func createRegionWithCoordinate(_ coordinate: CLLocationCoordinate2D, id: String) -> CLCircularRegion {
@@ -92,20 +92,43 @@ class ViewController: UIViewController {
         )
     }
     
-    @objc private func updateTableViewData() {
-        monitoredRegions = locationManager.monitoredRegions.map { $0 }
+    @objc private func updateVisibleData() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            self.monitoredRegions = self.locationManager.monitoredRegions.map { $0 }
+            self.updateAnnotations()
+        }
+    }
+    
+    private func updateAnnotations() {
+        mapView.annotations.forEach { mapView.removeAnnotation($0) }
+        
+        for region in monitoredRegions {
+            if let region = region as? CLCircularRegion {
+                let annotation = MKPointAnnotation()
+                annotation.coordinate = region.center
+                annotation.title = region.identifier
+                mapView.addAnnotation(annotation)
+            }
+        }
     }
     
 }
 
 extension ViewController: UITableViewDelegate {
     
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        guard let region = monitoredRegions[indexPath.row] as? CLCircularRegion else { return }
+
+        let mapRegion = MKCoordinateRegion(center: region.center, span: MKCoordinateSpan(latitudeDelta: 0.001, longitudeDelta: 0.001))
+        mapView.setRegion(mapRegion, animated: true)
+    }
+    
     func tableView(_ tableView: UITableView, editActionsForRowAt indexPath: IndexPath) -> [UITableViewRowAction]? {
         let action = UITableViewRowAction(style: .destructive, title: "Remove") { [weak self] (_, indexPath) in
             guard let weakSelf = self else { return }
             
             weakSelf.locationManager.stopMonitoring(for: weakSelf.monitoredRegions[indexPath.row])
-            weakSelf.updateTableViewData()
+            weakSelf.updateVisibleData()
         }
         
         return [action]
