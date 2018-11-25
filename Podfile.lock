@@ -1,0 +1,16 @@
+PODS:
+  - AppSpectorSDK (1.1.3)
+
+DEPENDENCIES:
+  - AppSpectorSDK
+
+SPEC REPOS:
+  https://github.com/cocoapods/specs.git:
+    - AppSpectorSDK
+
+SPEC CHECKSUMS:
+  AppSpectorSDK: 6e241b102992fcc87ef7d6a8ffc046a0e31f395c
+
+PODFILE CHECKSUM: 3f23b4a6849bb2512f8c6ee78002fa1720571b56
+
+COCOAPODS: 1.5.3
